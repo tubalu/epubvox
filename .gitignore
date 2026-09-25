@@ -1,0 +1,25 @@
+# Python and build output
+.venv
+__pycache__
+*.pyc
+dist/
+build/
+*.egg-info/
+
+# macOS and editors
+.DS_Store
+.idea
+
+# Books, voices and generated audio stay on your computer
+out/
+voices/
+*.epub
+*.wav
+*.mp3
+*.m4a
+*.m4b
+
+# Local notes and browser-automation scratch
+docs/
+.qwen-tts/
+.playwright-mcp/

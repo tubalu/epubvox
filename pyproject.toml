@@ -1,0 +1,29 @@
+[project]
+name = "epubvox"
+version = "0.1.0"
+description = "Turn an EPUB into a per-chapter audiobook in your own cloned voice with Qwen3-TTS on Apple Silicon (MLX)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Scott Lu" }]
+requires-python = ">=3.10,<3.13"
+keywords = ["epub", "audiobook", "tts", "qwen3-tts", "mlx", "voice-cloning"]
+dependencies = [
+    "mlx-audio>=0.5.4",
+    "numpy",
+    "soundfile",
+    "ebooklib",
+    "beautifulsoup4",
+    "lxml",
+]
+
+[project.urls]
+Homepage = "https://github.com/tubalu/epubvox"
+"Based on" = "https://github.com/santinic/audiblez"
+
+[project.scripts]
+epubvox = "epubvox.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"

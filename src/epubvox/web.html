@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>epubvox</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1b1f24; --muted: #5d6874; --line: #d8dde3;
+    --accent: #2457d6; --accent-text: #ffffff; --ok: #157347; --bad: #b42318; --warn: #a15c07; --track: #e4e8ed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101317; --card: #181d23; --text: #e7eaee; --muted: #9aa5b1; --line: #2b333c;
+      --accent: #6ea0ff; --accent-text: #0b1220; --ok: #4ade80; --bad: #f87171; --warn: #fbbf24; --track: #29313a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { display: grid; gap: 16px; max-width: 1120px; margin: 0 auto; padding: 16px; }
+  @media (min-width: 920px) { main { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  h1 { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-size: 17px; }
+  .field { margin-bottom: 12px; }
+  .field > label { display: block; font-size: 13px; font-weight: 600; }
+  .field small, .muted { color: var(--muted); font-weight: 400; }
+  input, select, textarea, button { font: inherit; }
+  input, select, textarea { width: 100%; margin-top: 4px; padding: 8px 10px; color: var(--text);
+                            background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+  input:disabled { opacity: .5; }
+  textarea { resize: vertical; }
+  button { padding: 8px 14px; color: var(--text); background: var(--card); border: 1px solid var(--line);
+           border-radius: 8px; cursor: pointer; }
+  button.primary { color: var(--accent-text); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  button.link { padding: 0; border: 0; background: none; color: var(--accent); text-decoration: underline; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; }
+  .row input { flex: 1; }
+  .row button { margin-top: 4px; }
+  .grid { display: grid; gap: 0 12px; grid-template-columns: 1fr 1fr; }
+  #previews:empty { display: none; }
+  #previews { margin: 0 0 12px; }
+  #previews .sample { display: grid; gap: 2px; margin: 6px 0; }
+  #previews audio { width: 100%; height: 36px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  #bookinfo, #message { min-height: 1.4em; margin: 0 0 12px; font-size: 13px; }
+  details { margin-bottom: 12px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+  .badge { padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.run { color: var(--accent); border-color: var(--accent); }
+  .badge.ok, .badge.bad, .badge.warn { border-color: currentColor; }
+  .meter { margin-bottom: 14px; }
+  .meter-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+  .meter-head span:first-child { font-weight: 600; }
+  .meter-head span:last-child { color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+  .bar { height: 10px; margin-top: 6px; overflow: hidden; background: var(--track); border-radius: 999px; }
+  .bar > div { width: 0; height: 100%; background: var(--accent); transition: width .4s; }
+  dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 14px; }
+  dt { font-size: 12px; color: var(--muted); }
+  dd { margin: 0; font-size: 16px; font-weight: 600; }
+  pre { max-height: 240px; margin: 0; padding: 10px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+        font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg);
+        border: 1px solid var(--line); border-radius: 8px; }
+  dialog { width: min(560px, 92vw); padding: 0; color: var(--text); background: var(--card);
+           border: 1px solid var(--line); border-radius: 12px; }
+  dialog::backdrop { background: rgb(0 0 0 / .45); }
+  .picker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px;
+                 border-bottom: 1px solid var(--line); font-size: 13px; overflow-wrap: anywhere; }
+  #pickerList { max-height: 55vh; margin: 0; padding: 0; overflow: auto; list-style: none; }
+  #pickerList button { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+  #pickerList .dir { font-weight: 600; }
+  pre:empty { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <section class="card" aria-labelledby="settingsTitle">
+    <h1 id="settingsTitle">Book and voice</h1>
+
+    <div class="field">
+      <label for="epub">Book (.epub)</label>
+      <div class="row">
+        <input id="epub" autocomplete="off" spellcheck="false" placeholder="/path/to/book.epub">
+        <button type="button" data-kind="epub" data-target="epub">Browse…</button>
+      </div>
+      <select id="recent" aria-label="Recent books"><option value="">Recent books…</option></select>
+    </div>
+
+    <div class="field">
+      <label for="ref_audio">Reference voice (audio clip)</label>
+      <div class="row">
+        <input id="ref_audio" autocomplete="off" spellcheck="false" placeholder="/path/to/voice.wav">
+        <button type="button" data-kind="audio" data-target="ref_audio">Browse…</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="ref_text">Reference text <small>(the exact words spoken in the clip; optional, but the voice matches better)</small></label>
+      <textarea id="ref_text" rows="2"></textarea>
+    </div>
+
+    <div class="grid">
+      <div class="field">
+        <label for="lang">Language</label>
+        <input id="lang" list="languages" autocomplete="off">
+        <datalist id="languages"><option value="chinese"><option value="english"><option value="auto"></datalist>
+      </div>
+      <div class="field">
+        <label for="chapters">Chapters <small>(empty = all)</small></label>
+        <input id="chapters" autocomplete="off" placeholder="80-   ·   1-100   ·   1-10,50">
+      </div>
+      <div class="field">
+        <label for="audio_format">Format</label>
+        <select id="audio_format"><option>wav</option><option>mp3</option><option>m4a</option></select>
+      </div>
+      <div class="field">
+        <label for="bitrate">Bitrate</label>
+        <input id="bitrate" list="bitrates" autocomplete="off" placeholder="32k">
+        <datalist id="bitrates"><option value="24k"><option value="32k"><option value="48k"><option value="64k"></datalist>
+      </div>
+      <div class="field">
+        <label for="speed">Speed <small>(1 = natural)</small></label>
+        <input id="speed" list="speeds" autocomplete="off" inputmode="decimal" placeholder="1.5">
+        <datalist id="speeds"><option value="1"><option value="1.25"><option value="1.5"><option value="1.75"><option value="2"></datalist>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="replace">Pronunciation fixes <small>(optional .txt: one <code>search==replace</code> per line)</small></label>
+      <div class="row">
+        <input id="replace" autocomplete="off" spellcheck="false" placeholder="/path/to/fixes.txt">
+        <button type="button" data-kind="text" data-target="replace">Browse…</button>
+      </div>
+    </div>
+
+    <p id="bookinfo" class="muted"></p>
+
+    <div class="field">
+      <label for="output">Output folder <small>(empty = <small>(empty = out/&lt;book title&gt;)</small>lt;book title<small>(empty = out/&lt;book title&gt;)</small>gt; in the folder epubvox web was started from)</small></label>
+      <input id="output" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="field">
+      <label for="modelPick">Model</label>
+      <select id="modelPick"></select>
+      <input id="model" hidden autocomplete="off" spellcheck="false" placeholder="mlx-community/… (any mlx-audio model id)">
+    </div>
+
+    <div id="previews"></div>
+
+    <div class="actions">
+      <button id="preview" type="button" title="Speak the start of the first selected chapter with these settings">Preview</button>
+      <button id="start" type="button" class="primary">Start</button>
+      <button id="stop" type="button" disabled>Stop</button>
+      <button id="save" type="button">Save settings</button>
+    </div>
+    <p id="message" role="status"></p>
+  </section>
+
+  <section class="card" aria-labelledby="progressTitle">
+    <h1 id="progressTitle">Progress <span id="badge" class="badge">Idle</span></h1>
+    <p id="statusText" class="muted">Pick a book and press Start.</p>
+
+    <div class="meter">
+      <div class="meter-head"><span>Chapters</span><span id="overallText">–</span></div>
+      <div class="bar"><div id="overallBar"></div></div>
+    </div>
+    <div class="meter">
+      <div class="meter-head"><span id="chapterTitle">Current chapter</span><span id="chunkText"></span></div>
+      <div class="bar"><div id="chunkBar"></div></div>
+    </div>
+
+    <dl>
+      <div><dt>Elapsed</dt><dd id="elapsed">–</dd></div>
+      <div><dt>Per chapter</dt><dd id="perChapter">–</dd></div>
+      <div><dt>Time left</dt><dd id="eta">–</dd></div>
+    </dl>
+    <pre id="log" aria-label="Converter log"></pre>
+  </section>
+</main>
+
+<dialog id="picker">
+  <div class="picker-head"><span id="pickerPath"></span><button type="button" id="pickerClose">Close</button></div>
+  <ul id="pickerList"></ul>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const FIELDS = ["epub", "ref_audio", "ref_text", "lang", "audio_format", "bitrate", "speed", "replace", "chapters",
+                "output", "model"];
+let bookInfo = null;
+let lastState = null;
+let wasRunning = false;
+
+async function api(path, body) {
+  const options = body === undefined
+    ? {}
+    : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+  const response = await fetch(path, options);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || response.statusText);
+  return data;
+}
+
+const readForm = () => Object.fromEntries(FIELDS.map((name) => [name, $(name).value]));
+const syncBitrate = () => { $("bitrate").disabled = $("audio_format").value === "wav"; };
+const OTHER_MODEL = "__other__";
+function syncModelPick() {  // the menu shows a known model; anything else is typed into the box under it
+  const known = [...$("modelPick").options].some((o) => o.value === $("model").value && o.value !== OTHER_MODEL);
+  $("modelPick").value = known ? $("model").value : OTHER_MODEL;
+  $("model").hidden = known;
+}
+function fillForm(form) {
+  for (const name of FIELDS) $(name).value = form[name] ?? "";
+  syncBitrate();
+  syncModelPick();
+}
+function say(text, kind = "") {
+  $("message").textContent = text;
+  $("message").className = kind;
+}
+function duration(seconds) {
+  if (seconds == null || !isFinite(seconds)) return "–";
+  const s = Math.max(0, Math.round(seconds));
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : m ? `${m}m ${s % 60}s` : `${s}s`;
+}
+
+/* ---- book information under the form ---- */
+let infoTimer, infoFor = "";
+const scheduleBookInfo = () => { clearTimeout(infoTimer); infoTimer = setTimeout(refreshBookInfo, 350); };
+
+async function refreshBookInfo() {
+  const form = readForm(), box = $("bookinfo");
+  if (!form.epub) { bookInfo = null; infoFor = ""; box.className = "muted"; box.textContent = "Pick a book to begin."; return; }
+  if (infoFor !== form.epub) { box.className = "muted"; box.textContent = "Reading the book…"; }  // first parse takes a few seconds
+  try {
+    bookInfo = await api("/api/book?" + new URLSearchParams({
+      epub: form.epub, chapters: form.chapters, output: form.output, audio_format: form.audio_format }));
+    infoFor = form.epub;
+  } catch (error) {
+    bookInfo = { error: error.message };
+  }
+  box.replaceChildren();
+  if (bookInfo.error) { box.className = "bad"; box.textContent = bookInfo.error; }
+  else {
+    box.className = "muted";
+    box.append(`${bookInfo.total} chapters · ${bookInfo.selected} selected · ${bookInfo.done} already converted`);
+    if (bookInfo.first_unfinished) {
+      const next = document.createElement("button");
+      next.type = "button"; next.className = "link"; next.textContent = `continue from ${bookInfo.first_unfinished}`;
+      next.onclick = () => { $("chapters").value = `${bookInfo.first_unfinished}-`; scheduleBookInfo(); };
+      box.append(" · ", next);
+    }
+  }
+  if (lastState) renderProgress(lastState);
+  refreshPreviews();
+}
+
+/* ---- previews: one sample per model for this book, to compare side by side ---- */
+let modelLabels = {};
+async function refreshPreviews() {
+  const box = $("previews"), epub = $("epub").value.trim();
+  let samples = [];
+  try { samples = epub ? await api("/api/previews?" + new URLSearchParams({ epub })) : []; } catch { samples = []; }
+  box.replaceChildren();
+  if (!samples.length) return;
+  const heading = document.createElement("label");
+  heading.textContent = "Previews for this book";
+  box.append(heading);
+  for (const sample of samples) {
+    const row = document.createElement("div"), name = document.createElement("small");
+    const audio = document.createElement("audio");
+    row.className = "sample";
+    name.textContent = `${modelLabels[sample.model] || sample.model} · ${new Date(sample.mtime * 1000).toLocaleString()}`;
+    audio.controls = true; audio.preload = "none";
+    audio.src = "/api/preview-audio?" + new URLSearchParams({ name: sample.name, v: sample.mtime });
+    row.append(name, audio);
+    box.append(row);
+  }
+}
+
+async function loadBook(epub) {
+  epub = epub.trim();
+  if (!epub) return;
+  try { fillForm(await api("/api/form?" + new URLSearchParams({ epub }))); } catch (error) { say(error.message, "bad"); }
+  scheduleBookInfo();
+}
+
+/* ---- progress ---- */
+function setBadge(label, kind, text) {
+  $("badge").textContent = label;
+  $("badge").className = "badge " + kind;
+  $("statusText").textContent = text;
+}
+
+function renderProgress(state) {
+  lastState = state;
+  const job = state.job, p = state.progress;
+  const mine = p && bookInfo && !bookInfo.error && p.book === bookInfo.title;
+  const relevant = p && (job.running || mine);
+
+  if (job.running) {
+    const loading = !p || !p.chapter || (p.chapter.chunk === 0 && !p.converted);
+    if (p && p.preview) setBadge("Running", "run", "Making a preview… a model's first use downloads it (can take minutes).");
+    else setBadge("Running", "run", loading ? "Loading the model and starting the first chapter…" : `Converting “${p.book}”`);
+  } else if (relevant && p.state === "finished" && p.preview) {
+    setBadge("Finished", "ok", "Preview ready: listen above.");
+  } else if (relevant && p.state === "finished") {
+    setBadge("Finished", "ok", "All selected chapters are done.");
+  } else if (relevant && p.state === "error") {
+    setBadge("Error", "bad", p.message || "The converter stopped with an error; see the log.");
+  } else if (relevant) {
+    setBadge("Stopped", "warn", "Press Start to continue where it stopped.");
+  } else if (job.exit_code) {
+    setBadge("Error", "bad", `The converter exited with code ${job.exit_code}; see the log below.`);
+  } else {
+    setBadge("Idle", "", "Pick a book and press Start.");
+  }
+
+  let done = 0, total = 0;
+  if (relevant && p.selected != null) { done = p.already_done + p.converted; total = p.selected; }
+  else if (bookInfo && !bookInfo.error) { done = bookInfo.done; total = bookInfo.selected; }
+  $("overallBar").style.width = total ? `${(100 * done) / total}%` : "0%";
+  $("overallText").textContent = total ? `${done} of ${total}` : "–";
+
+  const chapter = job.running && p ? p.chapter : null;
+  $("chapterTitle").textContent = chapter ? chapter.title : "Current chapter";
+  $("chunkBar").style.width = chapter && chapter.chunks ? `${(100 * chapter.chunk) / chapter.chunks}%` : "0%";
+  $("chunkText").textContent = chapter ? `part ${chapter.chunk} of ${chapter.chunks}` : "";
+
+  const now = Date.now() / 1000;
+  $("elapsed").textContent = relevant && p.started ? duration((job.running ? now : p.updated) - p.started) : "–";
+  $("perChapter").textContent = relevant ? duration(p.seconds_per_chapter) : "–";
+  $("eta").textContent = relevant && job.running ? duration(p.eta_seconds) : "–";
+
+  const log = $("log"), atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
+  log.textContent = state.log.join("\n");
+  if (atBottom) log.scrollTop = log.scrollHeight;
+
+  $("start").disabled = job.running;
+  $("preview").disabled = job.running;
+  $("stop").disabled = !job.running;
+  if (wasRunning && !job.running) refreshBookInfo();
+  wasRunning = job.running;
+}
+
+async function poll() {
+  try { renderProgress(await api("/api/state")); }
+  catch (error) { setBadge("Offline", "bad", "The server is not responding."); }
+}
+
+/* ---- file picker ---- */
+let pickTarget = "", pickKind = "epub";
+const join = (dir, name) => (dir.endsWith("/") ? dir + name : `${dir}/${name}`);
+
+async function browse(path) {
+  const list = $("pickerList");
+  try {
+    const data = await api("/api/browse?" + new URLSearchParams({ path, kind: pickKind }));
+    $("pickerPath").textContent = data.path;
+    list.replaceChildren();
+    const add = (name, isDir, action) => {
+      const item = document.createElement("li"), button = document.createElement("button");
+      button.type = "button"; button.textContent = isDir ? `${name}/` : name; button.onclick = action;
+      if (isDir) button.className = "dir";
+      item.append(button); list.append(item);
+    };
+    if (data.parent) add("..", true, () => browse(data.parent));
+    for (const entry of data.entries) {
+      const full = join(data.path, entry.name);
+      add(entry.name, entry.dir, entry.dir ? () => browse(full) : () => choose(full));
+    }
+  } catch (error) {
+    $("pickerPath").textContent = error.message;
+  }
+}
+function choose(path) {
+  $(pickTarget).value = path;
+  $("picker").close();
+  if (pickTarget === "epub") loadBook(path); else scheduleBookInfo();
+}
+async function openPicker(kind, target) {
+  pickKind = kind; pickTarget = target;
+  await browse($(target).value.trim());
+  $("picker").showModal();
+}
+
+/* ---- wiring ---- */
+document.querySelectorAll("[data-kind]").forEach((button) => {
+  button.onclick = () => openPicker(button.dataset.kind, button.dataset.target);
+});
+$("pickerClose").onclick = () => $("picker").close();
+$("epub").onchange = () => loadBook($("epub").value);
+$("recent").onchange = async () => { const epub = $("recent").value; $("recent").value = ""; await loadBook(epub); };
+$("audio_format").addEventListener("change", syncBitrate);
+for (const name of ["audio_format", "chapters", "output"]) $(name).addEventListener("input", scheduleBookInfo);
+
+$("start").onclick = async () => {
+  say("");
+  try {
+    const result = await api("/api/start", readForm());
+    fillForm(result.form);
+    say("Started. You can close this tab; the conversion keeps running.", "ok");
+    await poll();
+    scheduleBookInfo();
+  } catch (error) { say(error.message, "bad"); }
+};
+$("preview").onclick = async () => {
+  say("");
+  try {
+    await api("/api/preview", readForm());
+    say("Making a preview of the first selected chapter with this model…", "ok");
+    await poll();
+  } catch (error) { say(error.message, "bad"); }
+};
+$("stop").onclick = async () => {
+  try {
+    await api("/api/stop", {});
+    say("Stopping… this can take a few seconds. Press Start later to continue.");
+  } catch (error) { say(error.message, "bad"); }
+};
+$("save").onclick = async () => {
+  try { fillForm((await api("/api/save", readForm())).form); say("Settings saved.", "ok"); scheduleBookInfo(); }
+  catch (error) { say(error.message, "bad"); }
+};
+
+(async () => {
+  const state = await api("/api/state");
+  for (const model of [...state.models, { id: OTHER_MODEL, label: "Other model id…" }]) {
+    const option = document.createElement("option");
+    option.value = model.id;
+    option.textContent = model.id === OTHER_MODEL ? model.label : `${model.label} — ${model.id}`;
+    $("modelPick").append(option);
+    modelLabels[model.id] = model.label;
+  }
+  $("modelPick").onchange = () => {
+    const other = $("modelPick").value === OTHER_MODEL;
+    $("model").hidden = !other;
+    if (other) { $("model").value = ""; $("model").focus(); } else $("model").value = $("modelPick").value;
+  };
+  fillForm(state.settings.last);
+  for (const epub of state.settings.recent) {
+    const option = document.createElement("option");
+    option.value = epub; option.textContent = epub.split("/").pop();
+    $("recent").append(option);
+  }
+  await refreshBookInfo();
+  renderProgress(state);
+  setInterval(poll, 1500);
+})();
+</script>
+</body>
+</html>
