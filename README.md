@@ -140,6 +140,18 @@ uv run epubvox -h                                # runs from the source tree
 uv run python -m unittest discover -s test       # tests
 ```
 
+`uv run epubvox` takes the same options as the installed command, so you can try a change without reinstalling:
+
+```bash
+uv run epubvox -l book.epub                                     # chapters it found
+uv run epubvox -r my-voice.wav --preview preview.m4a book.epub  # a short sample first
+uv run epubvox -r my-voice.wav -c 1-10 book.epub                # chapters 1 to 10
+uv run epubvox web                                              # the web page; pick the voice there
+```
+
+Leave out `-r` once the clip is at `~/.config/epubvox/voice.wav` or `EPUBVOX_VOICE` points at it. `voices/`, books
+and generated audio are gitignored, so they stay on your computer.
+
 | Path | What it is |
 |---|---|
 | `src/epubvox/convert.py` | the converter and its command line |
