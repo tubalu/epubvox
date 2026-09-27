@@ -24,6 +24,11 @@ Homepage = "https://github.com/tubalu/epubvox"
 [project.scripts]
 epubvox = "epubvox.cli:main"
 
+# Allow-list the sdist: hatchling otherwise packs every non-ignored file, including
+# book output folders (./<title>/) left in the repo root.
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/test", "/README.md", "/LICENSE", "/epubvox"]
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
