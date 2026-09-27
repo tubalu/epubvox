@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Run epubvox from this source tree, e.g. `./epubvox -l book.epub`.
+# Symlink it onto your PATH to use plain `epubvox` anywhere:
+#   ln -s "$PWD/epubvox" ~/.local/bin/epubvox
+set -euo pipefail
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "epubvox: uv is not installed; run: brew install uv ffmpeg" >&2
+  exit 127
+fi
+
+# Resolve symlinks so the repo is found even when called through a link on PATH.
+repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+
+# --project (not --directory) keeps the caller's working directory, so relative
+# book paths and the default ./<title>/ output folder behave as documented.
+exec uv run --quiet --project "$repo" epubvox "$@"

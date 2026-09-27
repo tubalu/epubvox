@@ -149,6 +149,13 @@ uv run epubvox -r my-voice.wav -c 1-10 book.epub                # chapters 1 to 
 uv run epubvox web                                              # the web page; pick the voice there
 ```
 
+The `epubvox` script in the repo root is a shortcut for the same thing: `./epubvox -l book.epub`. Link it onto your
+`PATH` and every `epubvox …` command above runs your source tree, from any folder:
+
+```bash
+ln -s "$PWD/epubvox" ~/.local/bin/epubvox
+```
+
 Leave out `-r` once the clip is at `~/.config/epubvox/voice.wav` or `EPUBVOX_VOICE` points at it. `voices/`, books
 and generated audio are gitignored, so they stay on your computer.
 
